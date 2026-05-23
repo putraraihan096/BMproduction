@@ -328,7 +328,6 @@ with st.sidebar:
     k = st.slider("", min_value=2, max_value=8, value=3, label_visibility="collapsed")
 
     feature_options = {
-        ""
         "QTY + HARGA": ["QTY", "HARGA"],
         "QTY + TOTAL": ["QTY", "TOTAL"],
         "HARGA + TOTAL": ["HARGA", "TOTAL"],
