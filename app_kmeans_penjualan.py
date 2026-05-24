@@ -7,6 +7,7 @@ from matplotlib import rcParams
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score
+import streamlit.components.v1 as components
 import warnings
 warnings.filterwarnings("ignore")
 
@@ -44,6 +45,25 @@ ACCENT    = "#6c8ebf"
 # ── Custom CSS ─────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <style>
+#MainMenu {{
+    visibility: hidden;
+}}
+
+[data-testid="stToolbar"] {{
+    display: none;
+}}
+
+[data-testid="stDecoration"] {{
+    display: none;
+}}
+
+[data-testid="stStatusWidget"] {{
+    display: none;
+}}
+
+header {{
+    visibility: hidden;
+}}
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
 
 html, body, [class*="css"] {{
@@ -290,7 +310,7 @@ button[data-baseweb="tab"][aria-selected="true"] {{
 def load_data():
     df = pd.read_csv("DataSablon.csv", sep=";")
     df.columns = [c.strip() for c in df.columns]
-    df = df[["NAMA PRODUK", "QTY", "HARGA", "TOTAL", "VENDOR", "TANGGAL"]].copy()
+    df = df[["NAMA PRODUK", "QTY", "HARGA", "TOTAL", "CUSTOMER", "TANGGAL"]].copy()
     df.dropna(subset=["NAMA PRODUK", "QTY", "HARGA"], inplace=True)
 
     def clean_rp(s):
@@ -328,13 +348,18 @@ with st.sidebar:
     k = st.slider("", min_value=2, max_value=8, value=3, label_visibility="collapsed")
 
     feature_options = {
-        "QTY + HARGA": ["QTY", "HARGA"],
-        "QTY + TOTAL": ["QTY", "TOTAL"],
-        "HARGA + TOTAL": ["HARGA", "TOTAL"],
-        "QTY + HARGA + TOTAL": ["QTY", "HARGA", "TOTAL"],
+    "QTY + TOTAL": ["QTY", "TOTAL"],
     }
+
     st.markdown(f'<div class="sidebar-label">Fitur Analisis</div>', unsafe_allow_html=True)
-    fitur_label       = st.selectbox("", list(feature_options.keys()), index=1, label_visibility="collapsed")
+
+    fitur_label = st.selectbox(
+        "",
+        ["QTY + TOTAL"],
+        index=0,
+        label_visibility="collapsed"
+    )
+
     selected_features = feature_options[fitur_label]
 
     st.markdown(f'<div class="sidebar-label">Mode Tampilan</div>', unsafe_allow_html=True)
@@ -364,27 +389,112 @@ with st.sidebar:
         inertias.append(km.inertia_)
 
     st.markdown('<hr class="sidebar-divider">', unsafe_allow_html=True)
-    st.markdown(f"""
-        <div class="score-display">
-            <div class="score-num">{sil_score:.2f}</div>
-            <div class="score-label">Silhouette Score</div>
+
+    cluster_summary = df.groupby("Cluster").agg(
+        Total_QTY=("QTY", "sum"),
+        Total_Penjualan=("TOTAL", "sum")
+    ).reset_index()
+
+    profile_html = f"""
+    <div style="
+        background:{BG_CARD};
+        border:1px solid {BG_BORDER};
+        border-radius:8px;
+        padding:16px;
+        margin-top:10px;
+    ">
+        <div style="
+            font-family:'IBM Plex Mono', monospace;
+            font-size:11px;
+            letter-spacing:2px;
+            text-transform:uppercase;
+            color:{TXT_PRI};
+            margin-bottom:14px;
+        ">
+            CLUSTER PROFILE
         </div>
-    """, unsafe_allow_html=True)
+    """
 
-    st.markdown(f'<div class="sidebar-label" style="margin-top:20px;">Elbow Curve</div>', unsafe_allow_html=True)
+    for _, row in cluster_summary.iterrows():
 
-    fig_elbow, ax_e = plt.subplots(figsize=(3.2, 1.9))
-    ax_e.plot(range(1, 9), inertias, color="#6c8ebf", linewidth=2, marker="o",
-              markersize=4, markerfacecolor="#0f1117", markeredgecolor="#6c8ebf", markeredgewidth=1.5)
-    ax_e.axvline(x=k, color="#d6a35b", linestyle="--", linewidth=1, alpha=0.8)
-    ax_e.set_xlabel("K", fontsize=8)
-    ax_e.set_ylabel("WCSS", fontsize=7)
-    ax_e.tick_params(labelsize=7)
-    ax_e.grid(True, alpha=0.2)
-    for sp in ax_e.spines.values():
-        sp.set_edgecolor(BG_BORDER)
-    fig_elbow.tight_layout(pad=0.5)
-    st.pyplot(fig_elbow, use_container_width=True)
+        ci = int(row["Cluster"])
+        color = PALETTE[ci % len(PALETTE)]
+
+        total_qty = int(row["Total_QTY"])
+        total_penjualan = row["Total_Penjualan"] / 1000000
+
+        profile_html += f"""
+        <div style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-bottom:12px;
+            padding-bottom:10px;
+            border-bottom:1px solid #1e2330;
+        ">
+
+            <div style="
+                display:flex;
+                align-items:center;
+                gap:10px;
+            ">
+
+                <div style="
+                    width:10px;
+                    height:10px;
+                    border-radius:50%;
+                    background:{color};
+                "></div>
+
+                <div>
+
+                    <div style="
+                        font-size:13px;
+                        font-weight:600;
+                        color:{TXT_PRI};
+                        font-family:'IBM Plex Mono', monospace;
+                    ">
+                        C{ci}
+                    </div>
+
+                    <div style="
+                        font-size:10px;
+                        color:{TXT_SEC};
+                        margin-top:2px;
+                    ">
+                        Qty {total_qty}
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div style="text-align:right;">
+
+                <div style="
+                    font-size:12px;
+                    font-weight:600;
+                    color:{TXT_PRI};
+                ">
+                    {total_penjualan:.1f} jt
+                </div>
+
+                <div style="
+                    font-size:10px;
+                    color:{TXT_SEC};
+                    margin-top:2px;
+                ">
+                    Total
+                </div>
+
+            </div>
+
+        </div>
+        """
+
+    profile_html += "</div>"
+
+    components.html(profile_html, height=320, scrolling=False)
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.markdown(f"""
@@ -574,35 +684,63 @@ with col_r:
                 )
 
                 # ── Rekomendasi Strategi per Cluster ─────────────────────────
-                avg_qty_all   = df["QTY"].mean()
-                avg_total_all = df["TOTAL"].mean()
 
-                cluster_avg_qty   = grp["QTY"].mean()
-                cluster_avg_total = grp["TOTAL"].mean()
+                if ci == 0:
 
-                if cluster_avg_qty >= avg_qty_all and cluster_avg_total >= avg_total_all:
-                    kategori = "🔥 Produk Sangat Laku"
+                    kategori = "Cluster 0 — Penjualan Rendah"
+
                     rekomendasi = [
-                        "Pastikan stok selalu tersedia agar tidak kehabisan.",
-                        "Prioritaskan produk ini dalam promosi dan iklan.",
-                        "Gunakan strategi bundling atau upselling untuk meningkatkan omzet."
+                        "Lakukan evaluasi produk yang kurang diminati pelanggan.",
+                        "Gunakan strategi diskon atau bundling untuk meningkatkan penjualan.",
+                        "Kurangi stok produk dengan perputaran lambat.",
+                        "Optimalkan promosi pada media sosial dan marketplace."
                     ]
-                elif cluster_avg_qty >= avg_qty_all:
-                    kategori = "📈 Produk Potensial"
+
+                elif ci == 2:
+
+                    kategori = "Cluster 2 — Penjualan Sedang"
+
                     rekomendasi = [
-                        "Tingkatkan visibilitas produk melalui promosi khusus.",
-                        "Evaluasi harga untuk memaksimalkan margin keuntungan.",
-                        "Jadikan produk ini sebagai produk unggulan untuk menarik pelanggan baru."
+                        "Tingkatkan promosi agar penjualan dapat naik ke kategori tinggi.",
+                        "Pertahankan kualitas produk dan pelayanan pelanggan.",
+                        "Gunakan campaign musiman untuk meningkatkan transaksi.",
+                        "Pantau tren produk yang mulai mengalami peningkatan permintaan."
                     ]
+
+                elif ci == 1:
+
+                    kategori = "Cluster 1 — Penjualan Tinggi"
+
+                    rekomendasi = [
+                        "Prioritaskan ketersediaan stok agar tidak terjadi kehabisan barang.",
+                        "Fokuskan iklan dan promosi pada produk terlaris.",
+                        "Terapkan strategi upselling dan cross-selling.",
+                        "Pertahankan kualitas produk untuk menjaga loyalitas pelanggan."
+                    ]
+
+                elif ci == 3:
+
+                    kategori = "Cluster 3 — Penjualan Sangat Tinggi"
+
+                    rekomendasi = [
+                        "Jadikan produk sebagai produk unggulan utama perusahaan.",
+                        "Tingkatkan kapasitas stok dan distribusi produk.",
+                        "Gunakan strategi premium marketing untuk memaksimalkan omzet.",
+                        "Analisis pola pembelian pelanggan untuk meningkatkan profit."
+                    ]
+
                 else:
-                    kategori = "⚠️ Produk Kurang Laku"
+
+                    kategori = f"Cluster {ci}"
+
                     rekomendasi = [
-                        "Berikan diskon atau paket bundling untuk meningkatkan penjualan.",
-                        "Evaluasi harga, desain, atau kualitas produk.",
-                        "Kurangi stok dan alihkan fokus ke produk yang lebih diminati pasar."
+                        "Lakukan evaluasi performa penjualan cluster.",
+                        "Analisis pola transaksi dan perilaku pelanggan.",
+                        "Optimalkan strategi promosi berdasarkan karakteristik cluster."
                     ]
 
                 st.markdown(f"### {kategori}")
+
                 for rec in rekomendasi:
                     st.markdown(f"- {rec}")
 
