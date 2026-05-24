@@ -45,12 +45,9 @@ ACCENT    = "#6c8ebf"
 # ── Custom CSS ─────────────────────────────────────────────────────────────────
 st.markdown(f"""
 <style>
-#MainMenu {{
-    visibility: hidden;
-}}
 
 [data-testid="stToolbar"] {{
-    display: none;
+    display: 1rem;
 }}
 
 [data-testid="stDecoration"] {{
@@ -62,7 +59,7 @@ st.markdown(f"""
 }}
 
 header {{
-    visibility: hidden;
+    background: transparent;
 }}
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
 
