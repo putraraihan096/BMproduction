@@ -377,6 +377,28 @@ with st.sidebar:
         index=[f"Cluster {i}" for i in range(k)]
     )
 
+    # Ranking cluster berdasarkan centroid asli K-Means
+    centroid_rank = (
+        centroids_df
+        .sort_values(
+            by=["QTY", "TOTAL"],
+            ascending=[True, True]
+        )
+    )
+
+    cluster_position = {}
+
+    for rank, cluster_name in enumerate(
+        centroid_rank.index,
+        start=1
+    ):
+
+        cluster_id = int(
+            cluster_name.replace("Cluster ", "")
+        )
+
+        cluster_position[cluster_id] = rank
+
     sil_score = silhouette_score(X_scaled, df["Cluster"]) if k > 1 else 0.0
 
     inertias = []
@@ -680,66 +702,134 @@ with col_r:
                     use_container_width=True, hide_index=True
                 )
 
-                # ── Rekomendasi Strategi per Cluster ─────────────────────────
+            # Ranking cluster berdasarkan centroid
+            rank = cluster_position[ci]
 
-                if ci == 0:
+            
 
-                    kategori = "Cluster 0 — Penjualan Rendah"
+# Label otomatis sesuai jumlah cluster
+            label_map = {
+                2: ["Rendah", "Tinggi"],
 
-                    rekomendasi = [
-                        "Lakukan evaluasi produk yang kurang diminati pelanggan.",
-                        "Gunakan strategi diskon atau bundling untuk meningkatkan penjualan.",
-                        "Kurangi stok produk dengan perputaran lambat.",
-                        "Optimalkan promosi pada media sosial dan marketplace."
-                    ]
+                3: ["Rendah", "Sedang", "Tinggi"],
 
-                elif ci == 2:
+                4: [
+                    "Rendah",
+                    "Menengah Bawah",
+                    "Menengah Atas",
+                    "Tinggi"
+                ],
 
-                    kategori = "Cluster 2 — Penjualan Sedang"
+                5: [
+                    "Sangat Rendah",
+                    "Rendah",
+                    "Sedang",
+                    "Tinggi",
+                    "Sangat Tinggi"
+                ],
 
-                    rekomendasi = [
-                        "Tingkatkan promosi agar penjualan dapat naik ke kategori tinggi.",
-                        "Pertahankan kualitas produk dan pelayanan pelanggan.",
-                        "Gunakan campaign musiman untuk meningkatkan transaksi.",
-                        "Pantau tren produk yang mulai mengalami peningkatan permintaan."
-                    ]
+                6: [
+                    "Sangat Rendah",
+                    "Rendah",
+                    "Menengah Bawah",
+                    "Menengah Atas",
+                    "Tinggi",
+                    "Sangat Tinggi"
+                ],
 
-                elif ci == 1:
+                7: [
+                    "Sangat Rendah",
+                    "Rendah",
+                    "Cukup Rendah",
+                    "Menengah",
+                    "Cukup Tinggi",
+                    "Tinggi",
+                    "Sangat Tinggi"
+                ],
 
-                    kategori = "Cluster 1 — Penjualan Tinggi"
+                8: [
+                    "Sangat Rendah",
+                    "Rendah",
+                    "Cukup Rendah",
+                    "Menengah Bawah",
+                    "Menengah",
+                    "Menengah Atas",
+                    "Tinggi",
+                    "Sangat Tinggi"
+                ]
+            }
 
-                    rekomendasi = [
-                        "Prioritaskan ketersediaan stok agar tidak terjadi kehabisan barang.",
-                        "Fokuskan iklan dan promosi pada produk terlaris.",
-                        "Terapkan strategi upselling dan cross-selling.",
-                        "Pertahankan kualitas produk untuk menjaga loyalitas pelanggan."
-                    ]
+            kategori = label_map[k][rank - 1]
 
-                elif ci == 3:
+# Insight otomatis mengikuti centroid
+            rekomendasi_map = {
+                "Sangat Rendah": [
+                    "Evaluasi produk dengan tingkat penjualan terendah.",
+                    "Pertimbangkan pemberian diskon atau promosi.",
+                    "Kurangi prioritas pengadaan stok baru.",
+                    "Lakukan analisis kebutuhan pelanggan."
+                ],
 
-                    kategori = "Cluster 3 — Penjualan Sangat Tinggi"
+                "Rendah": [
+                    "Tingkatkan promosi produk.",
+                    "Evaluasi strategi pemasaran yang digunakan.",
+                    "Pantau perkembangan penjualan secara berkala."
+                ],
 
-                    rekomendasi = [
-                        "Jadikan produk sebagai produk unggulan utama perusahaan.",
-                        "Tingkatkan kapasitas stok dan distribusi produk.",
-                        "Gunakan strategi premium marketing untuk memaksimalkan omzet.",
-                        "Analisis pola pembelian pelanggan untuk meningkatkan profit."
-                    ]
+                "Cukup Rendah": [
+                    "Pertahankan stok pada tingkat normal.",
+                    "Tingkatkan eksposur produk melalui promosi ringan.",
+                    "Evaluasi tren penjualan secara berkala."
+                ],
 
-                else:
+                "Menengah Bawah": [
+                    "Pertahankan strategi penjualan saat ini.",
+                    "Lakukan monitoring terhadap perubahan permintaan.",
+                    "Optimalkan pelayanan pelanggan."
+                ],
 
-                    kategori = f"Cluster {ci}"
+                "Menengah": [
+                    "Pertahankan performa penjualan yang stabil.",
+                    "Lakukan promosi secara berkala.",
+                    "Pantau perkembangan permintaan pasar."
+                ],
 
-                    rekomendasi = [
-                        "Lakukan evaluasi performa penjualan cluster.",
-                        "Analisis pola transaksi dan perilaku pelanggan.",
-                        "Optimalkan strategi promosi berdasarkan karakteristik cluster."
-                    ]
+                "Menengah Atas": [
+                    "Pertahankan ketersediaan stok.",
+                    "Fokuskan promosi pada produk potensial.",
+                    "Optimalkan strategi pemasaran yang berjalan."
+                ],
 
-                st.markdown(f"### {kategori}")
+                "Cukup Tinggi": [
+                    "Pertahankan performa produk yang sudah baik.",
+                    "Pastikan ketersediaan stok tetap terjaga.",
+                    "Tingkatkan loyalitas pelanggan."
+                ],
 
-                for rec in rekomendasi:
-                    st.markdown(f"- {rec}")
+                "Tinggi": [
+                    "Prioritaskan ketersediaan stok.",
+                    "Jadikan produk sebagai fokus pemasaran.",
+                    "Pertahankan kualitas produk dan layanan."
+                ],
+
+                "Sangat Tinggi": [
+                    "Jadikan produk sebagai produk unggulan.",
+                    "Tingkatkan ketersediaan stok untuk menghindari kehabisan.",
+                    "Pertahankan strategi pemasaran yang efektif.",
+                    "Pertimbangkan pengembangan produk sejenis."
+                ]
+            }
+
+            rekomendasi = rekomendasi_map.get(kategori, [])
+
+            st.markdown(f"""
+            ### Cluster {ci} — {kategori}
+            """)
+
+            st.markdown("#### Rekomendasi")
+
+            for item in rekomendasi:
+                st.markdown(f"• {item}")        
 
 # ── Data Table ─────────────────────────────────────────────────────────────────
 st.markdown("<br>", unsafe_allow_html=True)
